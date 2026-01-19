@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import pool from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
@@ -15,20 +15,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        password: true,
-        name: true,
-        role: true,
-        smtpHost: true,
-        smtpPort: true,
-        smtpUser: true,
-        smtpSecure: true,
-      },
-    });
+    const result = await pool.query(
+      'SELECT id, email, password, name, role, smtp_host, smtp_port, smtp_user, smtp_secure FROM users WHERE email = $1',
+      [email]
+    );
+
+    const user = result.rows[0];
 
     if (!user) {
       return NextResponse.json(
@@ -50,9 +42,21 @@ export async function POST(request: NextRequest) {
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
+    // Convert snake_case to camelCase for frontend
+    const userData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      smtpHost: user.smtp_host,
+      smtpPort: user.smtp_port,
+      smtpUser: user.smtp_user,
+      smtpSecure: user.smtp_secure,
+    };
+
     return NextResponse.json({
       success: true,
-      user: userWithoutPassword,
+      user: userData,
     });
   } catch (error) {
     console.error('Login error:', error);

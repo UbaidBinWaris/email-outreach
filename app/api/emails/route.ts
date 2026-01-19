@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import pool from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
@@ -43,13 +43,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const emails = await prisma.email.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
+    const result = await pool.query(
+      'SELECT id, user_id as "userId", "to", subject, body, status, error, sent_at as "sentAt", created_at as "createdAt" FROM emails WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
+      [userId]
+    );
 
-    return NextResponse.json(emails);
+    return NextResponse.json(result.rows);
   } catch (error) {
     console.error('Get emails error:', error);
     return NextResponse.json(

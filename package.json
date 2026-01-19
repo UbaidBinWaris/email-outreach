@@ -6,10 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "lint": "eslint",
+    "db:setup": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",

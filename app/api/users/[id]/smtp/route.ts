@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { encrypt, decrypt } from '@/lib/encryption';
+import pool from '@/lib/db';
+import { encrypt } from '@/lib/encryption';
 import { verifySmtpConfig } from '@/lib/email';
 
 export async function PUT(
@@ -38,28 +38,26 @@ export async function PUT(
     // Encrypt password before storing
     const encryptedPassword = encrypt(smtpPassword);
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: {
-        smtpHost,
-        smtpPort: parseInt(smtpPort),
-        smtpUser,
-        smtpPassword: encryptedPassword,
-        smtpSecure: smtpSecure ?? true,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        smtpHost: true,
-        smtpPort: true,
-        smtpUser: true,
-        smtpSecure: true,
-      },
-    });
+    const result = await pool.query(
+      'UPDATE users SET smtp_host = $1, smtp_port = $2, smtp_user = $3, smtp_password = $4, smtp_secure = $5, updated_at = CURRENT_TIMESTAMP WHERE id = $6 RETURNING id, email, name, role, smtp_host, smtp_port, smtp_user, smtp_secure',
+      [smtpHost, parseInt(smtpPort), smtpUser, encryptedPassword, smtpSecure ?? true, id]
+    );
 
-    return NextResponse.json({ success: true, user });
+    const user = result.rows[0];
+    
+    // Convert snake_case to camelCase
+    const userData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      smtpHost: user.smtp_host,
+      smtpPort: user.smtp_port,
+      smtpUser: user.smtp_user,
+      smtpSecure: user.smtp_secure,
+    };
+
+    return NextResponse.json({ success: true, user: userData });
   } catch (error) {
     console.error('Update SMTP config error:', error);
     return NextResponse.json(
@@ -78,17 +76,12 @@ export async function GET(
 
     const user = await prisma.user.findUnique({
       where: { id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        smtpHost: true,
-        smtpPort: true,
-        smtpUser: true,
-        smtpSecure: true,
-      },
-    });
+      seleresult = await pool.query(
+      'SELECT id, email, name, role, smtp_host, smtp_port, smtp_user, smtp_secure FROM users WHERE id = $1',
+      [id]
+    );
+
+    const user = result.rows[0];
 
     if (!user) {
       return NextResponse.json(
@@ -97,9 +90,19 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(user);
-  } catch (error) {
-    console.error('Get user SMTP config error:', error);
+    // Convert snake_case to camelCase
+    const userData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      smtpHost: user.smtp_host,
+      smtpPort: user.smtp_port,
+      smtpUser: user.smtp_user,
+      smtpSecure: user.smtp_secure,
+    };
+
+    return NextResponse.json(userDataconfig error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch SMTP configuration' },
       { status: 500 }
