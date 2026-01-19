@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const [smtpPort, setSmtpPort] = useState('587');
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPassword, setSmtpPassword] = useState('');
-  const [smtpSecure, setSmtpSecure] = useState(true);
+  const [smtpSecure, setSmtpSecure] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -25,10 +25,12 @@ export default function SettingsPage() {
 
     // Load existing SMTP config
     if (user.smtpHost) {
+      const port = user.smtpPort?.toString() || '587';
       setSmtpHost(user.smtpHost);
-      setSmtpPort(user.smtpPort?.toString() || '587');
+      setSmtpPort(port);
       setSmtpUser(user.smtpUser || '');
-      setSmtpSecure(user.smtpSecure ?? true);
+      // Force correct secure setting based on port
+      setSmtpSecure(port === '465' ? true : false);
     }
   }, [user, router]);
 
@@ -159,14 +161,23 @@ export default function SettingsPage() {
                 <label htmlFor="smtpPort" className="block text-sm font-medium text-gray-700">
                   SMTP Port
                 </label>
-                <input
-                  type="number"
+                <select
                   id="smtpPort"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900"
                   value={smtpPort}
-                  onChange={(e) => setSmtpPort(e.target.value)}
-                  placeholder="587"
-                />
+                  onChange={(e) => {
+                    const port = e.target.value;
+                    setSmtpPort(port);
+                    // Auto-configure secure based on port
+                    setSmtpSecure(port === '465');
+                  }}
+                >
+                  <option value="587">587 (STARTTLS - Recommended for Gmail)</option>
+                  <option value="465">465 (SSL/TLS)</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Port 587 uses STARTTLS (turn off SSL/TLS checkbox), Port 465 uses SSL/TLS (turn on checkbox)
+                </p>
               </div>
 
               <div>
@@ -209,9 +220,14 @@ export default function SettingsPage() {
                   onChange={(e) => setSmtpSecure(e.target.checked)}
                 />
                 <label htmlFor="smtpSecure" className="ml-2 block text-sm text-gray-900">
-                  Use TLS/SSL (Recommended)
+                  Use SSL/TLS (Check this ONLY for port 465)
                 </label>
               </div>
+              <p className="text-xs text-gray-600 bg-yellow-50 border border-yellow-200 rounded p-2">
+                <strong>Gmail Configuration:</strong><br/>
+                • Port 587: Leave SSL/TLS <strong>unchecked</strong> (uses STARTTLS automatically)<br/>
+                • Port 465: Check SSL/TLS box
+              </p>
             </div>
 
             <div className="mt-6 flex space-x-3">

@@ -74,9 +74,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-      seleresult = await pool.query(
+    const result = await pool.query(
       'SELECT id, email, name, role, smtp_host, smtp_port, smtp_user, smtp_secure FROM users WHERE id = $1',
       [id]
     );
@@ -102,7 +100,9 @@ export async function GET(
       smtpSecure: user.smtp_secure,
     };
 
-    return NextResponse.json(userDataconfig error:', error);
+    return NextResponse.json(userData);
+  } catch (error) {
+    console.error('Get user SMTP config error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch SMTP configuration' },
       { status: 500 }

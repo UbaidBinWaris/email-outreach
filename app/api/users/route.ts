@@ -32,20 +32,17 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        role: role || 'USER',
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        roresult = await pool.query(
+    const result = await pool.query(
       'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING id, email, name, role, created_at as "createdAt"',
       [email, hashedPassword, name, role || 'USER']
     );
 
-    return NextResponse.json(result.rows[0]
+    return NextResponse.json(result.rows[0], { status: 201 });
+  } catch (error) {
+    console.error('Create user error:', error);
+    return NextResponse.json(
+      { error: 'Failed to create user' },
+      { status: 500 }
+    );
+  }
+}
